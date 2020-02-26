@@ -51,7 +51,7 @@ def main():
             shape = label["TENS"][0]["shape"]
             payload = m._payload[0]
             mask = np.frombuffer(payload, dtype='f').reshape(shape)
-            dset= out.create_dataset("/%d/mask"%count, mask.shape, dtype='f')
+            dset = out.create_dataset(name="/%d/mask"%count, shape=mask.shape, dtype='f', data=mask)
             print('reply:\n', mask.shape)
         count += 1
     print ("%i requests/replies processed" % count)
