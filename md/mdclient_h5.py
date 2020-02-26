@@ -10,24 +10,31 @@ from mdcliapi2 import MajorDomoClient
 import zio
 import json
 import numpy as np
+import h5py
+
+import h5_utils as h5u
 
 def main():
     verbose = '-v' in sys.argv
     client = MajorDomoClient("tcp://localhost:5555", verbose)
+    fn = "test/data-0.h5"
+    im_tags = ['frame_loose_lf0', 'frame_mp2_roi0', 'frame_mp3_roi0']    # l23
     requests = 1
     for i in range(requests):
+        img = h5u.get_hwc_img(fn, i, im_tags, [1, 10], [800, 1600], [0, 6000], 4000) # V
         try:
-            label = json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":[3,2],"word":4}]})
-            payload = np.array([[0, 1], [2, 3], [4, 5]], dtype='f')
+            label = json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":img.shape,"word":4}]})
+            # payload = np.array([[0, 1], [2, 3], [4, 5]], dtype='f')
             m = zio.Message(form='TENS', label=label, 
                  level=zio.MessageLevel.warning,
-                 payload=[payload.tobytes()])
+                 payload=[img.tobytes()])
             print(m)
             client.send(b"torch", m.toparts())
         except KeyboardInterrupt:
             print ("send interrupted, aborting")
             return
-
+    
+    out = h5py.File("out.h5", "w")
     count = 0
     while count < requests:
         try:
@@ -43,8 +50,9 @@ def main():
             label = json.loads(m.label)
             shape = label["TENS"][0]["shape"]
             payload = m._payload[0]
-            ret = np.frombuffer(payload, dtype='f').reshape(shape)
-            print('reply:\n', ret)
+            mask = np.frombuffer(payload, dtype='f').reshape(shape)
+            dset= out.create_dataset("/%d/mask"%count, mask.shape, dtype='f')
+            print('reply:\n', mask.shape)
         count += 1
     print ("%i requests/replies processed" % count)
 

@@ -10,10 +10,13 @@ from mdwrkapi import MajorDomoWorker
 import zio
 import json
 import numpy as np
+import torch
 
 def main():
     verbose = '-v' in sys.argv
     worker = MajorDomoWorker("tcp://localhost:5555", b"torch", verbose)
+    model = "ts-model/unet1024-l23-cosmic500-e50-gpu.ts"
+    net = torch.jit.load(model)
     reply = None
     while True:
         request = worker.recv(reply)
@@ -24,14 +27,20 @@ def main():
         label = json.loads(m.label)
         shape = label["TENS"][0]["shape"]
         payload = m._payload[0]
-        ret = np.frombuffer(payload, dtype='f').reshape(shape)
-        print('input:\n', ret)
-        ret = ret*10
-        print('output:\n', ret)
+        img = np.frombuffer(payload, dtype='f').reshape(shape)
 
-        reply = zio.Message(form='TENS', label=m.label, 
+        img_tensor = torch.from_numpy(np.transpose(img, axes=[2, 0, 1])) # hwc_to_chw
+        img_tensor = img_tensor.cuda()
+        with torch.no_grad():
+          input = img_tensor.unsqueeze(0)
+          print ("input.shape: ", input.shape)
+          mask = net.forward(input).squeeze().cpu().numpy()
+          print('mask.shape:\n', mask.shape)
+
+        reply = zio.Message(form='TENS',
+              label=json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":mask.shape,"word":4}]}), 
               level=zio.MessageLevel.warning,
-              payload=[ret.tobytes()]).toparts()
+              payload=[mask.tobytes()]).toparts()
 
 
 
