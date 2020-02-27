@@ -29,6 +29,7 @@ def main():
         payload = m._payload[0]
         img = np.frombuffer(payload, dtype='f').reshape(shape)
 
+        # numpy -> numpy
         img_tensor = torch.from_numpy(np.transpose(img, axes=[2, 0, 1])) # hwc_to_chw
         img_tensor = img_tensor.cuda()
         with torch.no_grad():

@@ -19,9 +19,9 @@ def main():
     client = MajorDomoClient("tcp://localhost:5555", verbose)
     fn = "test/data-0.h5"
     im_tags = ['frame_loose_lf0', 'frame_mp2_roi0', 'frame_mp3_roi0']    # l23
-    requests = 1
+    requests = 10
     for i in range(requests):
-        img = h5u.get_hwc_img(fn, i, im_tags, [1, 10], [800, 1600], [0, 6000], 4000) # V
+        img = h5u.get_hwc_img(fn, i%10, im_tags, [1, 10], [800, 1600], [0, 6000], 4000) # V
         try:
             label = json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":img.shape,"word":4}]})
             # payload = np.array([[0, 1], [2, 3], [4, 5]], dtype='f')
