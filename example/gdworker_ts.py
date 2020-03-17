@@ -26,7 +26,9 @@ def main():
         m = zio.Message()
         m.fromparts(request)
         label = json.loads(m.label)
-        shape = label["TENS"][0]["shape"]
+        label_tens = label["TENS"]["tensors"]
+        label_meta = label["TENS"]["metadata"]
+        shape = label_tens[0]["shape"]
         payload = m._payload[0]
         img = np.frombuffer(payload, dtype='f').reshape(shape)
 
@@ -39,8 +41,9 @@ def main():
           mask = net.forward(input).squeeze().cpu().numpy()
           print('mask.shape:\n', mask.shape)
 
+        label_tens = [{"dtype":'f',"part":1,"shape":mask.shape,"word":4}]
         reply = zio.Message(form='TENS',
-              label=json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":mask.shape,"word":4}]}), 
+              label=json.dumps({"TENS":{"tensors":label_tens, "metadata":label_meta}}), 
               level=zio.MessageLevel.warning,
               payload=[mask.tobytes()]).toparts()
 

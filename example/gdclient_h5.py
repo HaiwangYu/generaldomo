@@ -20,11 +20,14 @@ def main():
     client = Client("tcp://localhost:5555", zmq.CLIENT, verbose)
     fn = "test/data-0.h5"
     im_tags = ['frame_loose_lf0', 'frame_mp2_roi0', 'frame_mp3_roi0']    # l23
-    requests = 10
+    requests = 1
     for i in range(requests):
         img = h5u.get_hwc_img(fn, i%10, im_tags, [1, 10], [800, 1600], [0, 6000], 4000) # V
         try:
-            label = json.dumps({"TENS":[{"dtype":'f',"part":1,"shape":img.shape,"word":4}]})
+            label_tens = [{"dtype":'f',"part":1,"shape":img.shape,"word":4}]
+            label_meta = None
+            label_comb = {"TENS":{"tensors":label_tens, "metadata":label_meta}}
+            label = json.dumps(label_comb)
             # payload = np.array([[0, 1], [2, 3], [4, 5]], dtype='f')
             m = zio.Message(form='TENS', label=label, 
                  level=zio.MessageLevel.warning,
@@ -49,7 +52,7 @@ def main():
             m = zio.Message()
             m.fromparts(reply)
             label = json.loads(m.label)
-            shape = label["TENS"][0]["shape"]
+            shape = label["TENS"]["tensors"][0]["shape"]
             payload = m._payload[0]
             mask = np.frombuffer(payload, dtype='f').reshape(shape)
             dset = out.create_dataset(name="/%d/mask"%count, shape=mask.shape, dtype='f', data=mask)
